@@ -1,0 +1,14 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Wed Sep 20 10:43:20 2017
+
+@author: pckeyes
+"""
+#import commands
+import cv2
+import sys
+
+if __name__ == '__main__':
+    
+    #set up tracker
+    tracker = cv2.Tracker_create("MIL")

@@ -1,0 +1,6 @@
+Loco_tracker ideas
+
+-Work dialog boxes with directions into it (gui)
+-Save all centroid points so we can get locomotor data out of it
+-Tell user once video finishes locomotor data, time spend in different ROIs, bin time?
+-ask for how many rois
