@@ -9,7 +9,10 @@ Created on Wed Sep 20 10:49:31 2017
 import cv2
 import sys
 import numpy as np
-
+import pandas as pd
+from utilities import *
+import decimal
+          
 if __name__ == '__main__':
     
     #set up tracker
@@ -33,8 +36,19 @@ if __name__ == '__main__':
     #define ROIs
     #bbox = (0, 50, 50, 50) #define by preset dimensions
     bbox = cv2.selectROI(frame, False) # define by drawing ROI
+    #eventually write this as adding ROIs to a list based on user input
     roi1 = cv2.selectROI(frame, False)
     roi2 = cv2.selectROI(frame, False)
+    rois = [roi1, roi2]
+    n_rois = len(rois) #fix this too
+    roi_vertices = {k: () for k in range (0, n_rois)}
+    roi_counts = [0] * n_rois
+    for i in range(0, n_rois):
+        roi = rois[i]
+        roi_p1, roi_p2 = get_rect_vertices(rois[i])
+        roi_vertices[i] = (roi_p1, roi_p2);
+
+    #save ROI vertices
     
     
     #initialize tracker with first frame and bounding box
@@ -51,15 +65,18 @@ if __name__ == '__main__':
         #ret, frame = cap.read() #to down-sample video by 50%
         if not ret: break #break out of loop when video is out of frames
         
-        #TODO get this shit working, will likely fix your tracking problems 
+        #convert frame to grayscale THIS IS BROKEN DONT KNOW WHY
+        #curr_frame = cv2.cvtColor(curr_frame, cv2.COLOR_BGR2GRAY)
+        
+        #TODO make this optional and customizable 
         #perform gamma correction
         curr_gamma = np.float32(curr_frame)/255
         curr_frame = np.uint8(cv2.pow(curr_gamma, .75) * 255)     
         
         #get first centroid
-        p1 = (int(bbox[0]), int(bbox[1]))
-        p2 = (int(bbox[0] + bbox[2]), int(bbox[1] + bbox[3]))
-        centroid = (int(((p2[0]-p1[0])/2) + p1[0]), int(((p2[1]-p1[1])/2) + p1[1]))
+        bbox_p1, bbox_p2 = get_rect_vertices(bbox)
+        centroid_p1, centroid_p2 = get_rect_centroid(bbox_p1, bbox_p2)
+        centroid = (int(centroid_p1), int(centroid_p2))
 
     
         #update tracker
@@ -68,21 +85,18 @@ if __name__ == '__main__':
         #re-position bounding box
         if ret:
             #display ROIs in behavior trace window
-            roi1_p1 = (int(roi1[0]), int(roi1[1]))
-            roi1_p2 = (int(roi1[0] + roi1[2]), int(roi1[1] + roi1[3]))
-            cv2.rectangle(trace, roi1_p1, roi1_p2, (255,0,0))
-            roi2_p1 = (int(roi2[0]), int(roi2[1]))
-            roi2_p2 = (int(roi2[0] + roi2[2]), int(roi2[1] + roi2[3]))
-            cv2.rectangle(trace, roi2_p1, roi2_p2, (0,255,0))
+            for i in range(0, n_rois):
+                cv2.rectangle(trace, roi_vertices[i][0], roi_vertices[i][1], COLORS[i])
             
             #display real-time tracking in tracking window
-            p1 = (int(bbox[0]), int(bbox[1]))
-            p2 = (int(bbox[0] + bbox[2]), int(bbox[1] + bbox[3]))
+            bbox_p1, bbox_p2 = get_rect_vertices(bbox)
             #draw bounding box
-            cv2.rectangle(curr_frame, p1, p2, (0,0,255))
+            cv2.rectangle(curr_frame, bbox_p1, bbox_p2, (0,0,255))
             #draw center of bounding box
-            curr_centroid = (int(((p2[0]-p1[0])/2) + p1[0]), int(((p2[1]-p1[1])/2) + p1[1]))
+            curr_centroid_p1, curr_centroid_p2 = get_rect_centroid(bbox_p1, bbox_p2)
+            curr_centroid = (curr_centroid_p1, curr_centroid_p2)
             cv2.circle(curr_frame, curr_centroid, 4, (255,0,0))
+            roi_counts = classify_centroid(curr_centroid, roi_vertices, roi_counts)
             
             #trace object's path in behavior trace window
             cv2.line(trace, centroid, curr_centroid, (0,0,0), 2)
@@ -96,3 +110,14 @@ if __name__ == '__main__':
 #close video window
 cap.release()
 cv2.destroyAllWindows()
+
+#print percentage of time in each ROI
+#get total count number
+total_counts = 0
+for i in range(0, n_rois):
+    total_counts += roi_counts[i]
+#get percentages
+roi_percents = [0.0] * n_rois
+for i in range(0, n_rois):
+    roi_percents[i] = decimal.Decimal(roi_counts[i])/decimal.Decimal(total_counts)
+    print("Percent in ROI %i is %.3f" %(i + 1, roi_percents[i]))  
