@@ -4,11 +4,13 @@ Created on Thu Sep 21 11:23:35 2017
 
 @author: pckeyes
 """
-import cv2
-import numpy as np
+import Tkinter as tk
+
 
 #global variables
 COLORS = [(255, 0, 0), (0, 255, 0), (0, 0, 255)]
+SCREEN_WIDTH = tk.Tk().winfo_screenwidth()
+SCREEN_HEIGHT = tk.Tk().winfo_screenheight()
           
 #helper functions
 def get_rect_vertices(rect):
