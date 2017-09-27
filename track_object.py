@@ -35,7 +35,7 @@ if __name__ == '__main__':
         for j in range(0, n_rois):
             roi_counts_per_tracker[i].append(0)
     total_count = 0
-    #TODO turn this into a list of x tuples with y values where x is the # of tracked objects and y is the number of ROIs
+
     
     #set up tracker(s)
     #tracking algorithms include: BOOSTING, MIL, KCF, TLD, MEDIANFLOW
@@ -49,6 +49,13 @@ if __name__ == '__main__':
     if not cap.isOpened():
         print "Video did not open"
         sys.exit()
+    
+    n_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    
+    #create dataframe(s) to save centroids
+    dfs = []
+    for i in range(0, n_trackers):
+        dfs.append(pd.DataFrame(0, index=range(n_frames), columns = COLUMNS))
     
     #grab first frame
     ret, frame = cap.read()
@@ -65,6 +72,13 @@ if __name__ == '__main__':
     for i in range(0, n_trackers):
         print("Enclose object to be tracked in bounding box then hit Enter")
         bboxes.append(cv2.selectROI(frame, False))
+        
+    #get first centroid(s)
+    for i in range(0, n_trackers):    
+        bbox_p1, bbox_p2 = get_rect_vertices(bboxes[i])
+        centroid_p1, centroid_p2 = get_rect_centroid(bbox_p1, bbox_p2)
+        centroids[i] = (int(centroid_p1), int(centroid_p2))
+        dfs[i].loc[total_count] = centroids[i]
 
     #define ROI(s)
     for i in range(0, n_rois):
@@ -91,8 +105,9 @@ if __name__ == '__main__':
         
         #grab new frame
         ret, curr_frame = cap.read() 
-        #ret, curr_frame = cap.read() #to down-sample video by 50%
+        ret, curr_frame = cap.read() #to down-sample video by 50%
         if not ret: break #break out of loop when video is out of frames
+        total_count += 1
         
         #convert frame to grayscale THIS IS BROKEN DONT KNOW WHY
         #curr_frame = cv2.cvtColor(curr_frame, cv2.COLOR_BGR2GRAY)
@@ -100,13 +115,6 @@ if __name__ == '__main__':
         #perform gamma correction
         if use_gamma:
             frame = gamma_correct(frame, gamma)
-        
-        #get first centroid(s)
-        for i in range(0, n_trackers):    
-            bbox_p1, bbox_p2 = get_rect_vertices(bboxes[i])
-            centroid_p1, centroid_p2 = get_rect_centroid(bbox_p1, bbox_p2)
-            centroids[i] = (int(centroid_p1), int(centroid_p2))
-            #TODO write centroid(s) to file
 
         #display ROIs in behavior trace window
         for i in range(0, n_rois):
@@ -116,8 +124,6 @@ if __name__ == '__main__':
         for i in range(0, n_trackers):
             #re-position bounding box
             ret, bboxes[i] = trackers[i].update(curr_frame)
-            #ret1, bbox1 = tracker1.update(curr_frame)
-            #ret2, bbox2 = tracker2.update(curr_frame)
             if ret:
                 #display real-time tracking in tracking window
                 bbox_p1, bbox_p2 = get_rect_vertices(bboxes[i])
@@ -130,29 +136,33 @@ if __name__ == '__main__':
                 roi_counts_per_tracker[i] = classify_centroid(curr_centroid, roi_vertices, roi_counts_per_tracker[i])
                 #trace object's path in behavior trace window
                 cv2.line(trace, centroids[i], curr_centroid, COLORS[i], 1)
-                #update centroid for next frame
+                #save current centroid for drawing line to new centroid in next frame
                 centroids[i] = curr_centroid
-                #TODO write centroid(s) to file 
-
-        #update total count
-        #this only works if evey pixel is covered by ROI
-        total_count += 1        
+                dfs[i].loc[total_count] = centroids[i]
+   
 
         #display results
         cv2.imshow("Tracking", curr_frame)
         cv2.imshow("Behavior trace", trace)
         if cv2.waitKey(1) & 0xFF == ord('q'): break #quit upon 'q' key
 
-#close video window
+#save trace and close video window
+cv2.imwrite("behavior_trace.jpg", trace)
+for i in range(0, n_trackers):
+    file_name = "Object_%i_centroid_coordinates.csv" %(i + 1)
+    dfs[i].to_csv(file_name)
 cap.release()
 cv2.destroyAllWindows()
 
-#TODO update this to reflect multiple trackers and variable ROIs
 #print percentage of time in each ROI
 for i in range(0, n_trackers):
+    total_ROI_time = 0
     print("Object %i:" %(i + 1))
     for j in range(0, n_rois):
         #get percentages
         roi_percent = decimal.Decimal(roi_counts_per_tracker[i][j])/decimal.Decimal(total_count)
         print("Percent in ROI %i is %.3f" %(j + 1, roi_percent))
+        total_ROI_time += roi_percent
+    print("Percent in no ROI is %.3f" %(1 - total_ROI_time))
     print("")
+    
