@@ -12,7 +12,8 @@ import numpy as np
 
 #global variables
 COLORS = [(255, 0, 0), (0, 255, 0), (0, 0, 255)]
-          #TODO find a way to get many colors and different colors for ROI boxes and tracking lines
+#TODO find a way to get many colors and different colors for ROI boxes and tracking lines
+COLUMNS = ['x position', 'y position']
 SCREEN_WIDTH = tk.Tk().winfo_screenwidth()
 SCREEN_HEIGHT = tk.Tk().winfo_screenheight()
           
