@@ -61,12 +61,16 @@ if __name__ == '__main__':
         frame = gamma_correct(frame, gamma)
 
     #define bounding box(es)
+    print("")
     for i in range(0, n_trackers):
+        print("Enclose object to be tracked in bounding box then hit Enter")
         bboxes.append(cv2.selectROI(frame, False))
 
     #define ROI(s)
     for i in range(0, n_rois):
+        print("Select ROI then hit Enter")
         rois.append(cv2.selectROI(frame, False))
+    print("")
     
     #save ROI vertices
     for i in range(0, n_rois):
@@ -106,7 +110,7 @@ if __name__ == '__main__':
 
         #display ROIs in behavior trace window
         for i in range(0, n_rois):
-           cv2.rectangle(trace, roi_vertices[i][0], roi_vertices[i][1], COLORS[i]) 
+           cv2.rectangle(trace, roi_vertices[i][0], roi_vertices[i][1], (0, 0, 0)) 
 
         #update tracker(s)
         for i in range(0, n_trackers):
@@ -125,12 +129,13 @@ if __name__ == '__main__':
                 cv2.circle(curr_frame, curr_centroid, 4, (255,0,0))
                 roi_counts_per_tracker[i] = classify_centroid(curr_centroid, roi_vertices, roi_counts_per_tracker[i])
                 #trace object's path in behavior trace window
-                cv2.line(trace, centroids[i], curr_centroid, (0,0,0), 1)
+                cv2.line(trace, centroids[i], curr_centroid, COLORS[i], 1)
                 #update centroid for next frame
                 centroids[i] = curr_centroid
                 #TODO write centroid(s) to file 
 
         #update total count
+        #this only works if evey pixel is covered by ROI
         total_count += 1        
 
         #display results
