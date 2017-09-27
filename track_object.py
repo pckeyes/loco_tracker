@@ -22,6 +22,7 @@ if __name__ == '__main__':
     use_gamma = int(raw_input('If you would like to use gamma correction enter 1, else enter 0: '))
     if use_gamma:
         gamma = float(raw_input('Enter gamma correction value: '))
+    downsample = int(raw_input('If you would like to track using every other frame enter 1, else enter 0: '))
     
     #initialize global vars
     trackers = []
@@ -104,8 +105,8 @@ if __name__ == '__main__':
     while True:
         
         #grab new frame
-        ret, curr_frame = cap.read() 
-        ret, curr_frame = cap.read() #to down-sample video by 50%
+        ret, curr_frame = cap.read()
+        if downsample: ret, curr_frame = cap.read() #to down-sample video by 50%
         if not ret: break #break out of loop when video is out of frames
         total_count += 1
         
@@ -114,7 +115,7 @@ if __name__ == '__main__':
         
         #perform gamma correction
         if use_gamma:
-            frame = gamma_correct(frame, gamma)
+            curr_frame = gamma_correct(curr_frame, gamma)
 
         #display ROIs in behavior trace window
         for i in range(0, n_rois):
@@ -150,7 +151,7 @@ if __name__ == '__main__':
 cv2.imwrite("behavior_trace.jpg", trace)
 for i in range(0, n_trackers):
     file_name = "Object_%i_centroid_coordinates.csv" %(i + 1)
-    dfs[i].to_csv(file_name)
+    dfs[i].to_csv(file_name, index=False)
 cap.release()
 cv2.destroyAllWindows()
 
