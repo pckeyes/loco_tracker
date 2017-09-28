@@ -28,9 +28,15 @@ if __name__ == '__main__':
     trackers = []
     bboxes = []
     n_bboxes = n_trackers
+    
     centroids = [(0,0)] * n_trackers
+    all_centroids = []
+    for i in range(0, n_trackers):
+        all_centroids.append([])
+        
     rois = []
     roi_vertices = {k: () for k in range(0, n_rois)}
+                    
     roi_counts_per_tracker = {k: [] for k in range(0, n_trackers)}
     for i in range(0, n_trackers):
         for j in range(0, n_rois):
@@ -50,13 +56,6 @@ if __name__ == '__main__':
     if not cap.isOpened():
         print "Video did not open"
         sys.exit()
-    
-    n_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-    
-    #create dataframe(s) to save centroids
-    dfs = []
-    for i in range(0, n_trackers):
-        dfs.append(pd.DataFrame(0, index=range(n_frames), columns = COLUMNS))
     
     #grab first frame
     ret, frame = cap.read()
@@ -79,7 +78,7 @@ if __name__ == '__main__':
         bbox_p1, bbox_p2 = get_rect_vertices(bboxes[i])
         centroid_p1, centroid_p2 = get_rect_centroid(bbox_p1, bbox_p2)
         centroids[i] = (int(centroid_p1), int(centroid_p2))
-        dfs[i].loc[total_count] = centroids[i]
+        all_centroids[i].append(centroids[i])
 
     #define ROI(s)
     for i in range(0, n_rois):
@@ -139,8 +138,7 @@ if __name__ == '__main__':
                 cv2.line(trace, centroids[i], curr_centroid, COLORS[i], 1)
                 #save current centroid for drawing line to new centroid in next frame
                 centroids[i] = curr_centroid
-                dfs[i].loc[total_count] = centroids[i]
-   
+                all_centroids[i].append(centroids[i])
 
         #display results
         cv2.imshow("Tracking", curr_frame)
@@ -167,3 +165,8 @@ for i in range(0, n_trackers):
     print("Percent in no ROI is %.3f" %(1 - total_ROI_time))
     print("")
     
+#copy centroids to dataframe and write to csv
+for i in range(0,n_trackers):
+    df = pd.DataFrame(all_centroids[i], columns = COLUMNS)
+    file_name = "Object_%i_centroid_coordinates.csv" %(i + 1)
+    df.to_csv(file_name, index=False)
