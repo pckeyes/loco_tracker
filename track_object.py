@@ -12,11 +12,13 @@ import numpy as np
 import pandas as pd
 from utilities import *
 import decimal
+import os
           
 if __name__ == '__main__':
     
+    path = raw_input('Create a folder for this specific video, move the video to that folder, and enter the path to the folder: ')
+    
     #get user input
-    video = raw_input('Enter full path to video: ')
     n_rois = int(raw_input('Enter # ROIs: '))
     n_trackers = int(raw_input('Enter # tracked objects: '))
     use_gamma = int(raw_input('If you would like to use gamma correction enter 1, else enter 0: '))
@@ -49,6 +51,12 @@ if __name__ == '__main__':
     for i in range(0, n_trackers):
         trackers.append(cv2.Tracker_create("MIL"))
     
+    #find video
+    for file in os.listdir(path):
+        if file.endswith(".avi"):
+            video = file
+            break
+        
     #read video
     cap = cv2.VideoCapture(video)
     
@@ -62,10 +70,6 @@ if __name__ == '__main__':
     if not ret:
         print "Frame was not grabbed"
         sys.exit()
-    
-    #get rid of first 20 frames for demo
-    for i in range(0, 20):
-        ret, frame = cap.read()    
     
     #gamma correct frame
     if use_gamma:
@@ -151,7 +155,7 @@ if __name__ == '__main__':
         if cv2.waitKey(1) & 0xFF == ord('q'): break #quit upon 'q' key
 
 #save trace and close video window
-cv2.imwrite("behavior_trace.jpg", trace)
+cv2.imwrite(os.path.join(path, "behavior_trace.jpg"), trace)
 cap.release()
 cv2.destroyAllWindows()
 
@@ -171,13 +175,13 @@ for i in range(0, n_trackers):
     print("")
     df = pd.DataFrame(roi_percents, columns = ROI_COLS)
     file_name = "Object_%i_roi_percents.csv" %(i + 1)
-    df.to_csv(file_name, index = False)
+    df.to_csv(os.path.join(path, file_name), index = False)
     
 #copy centroids to dataframe and write to csv
 for i in range(0, n_trackers):
     df = pd.DataFrame(all_centroids[i], columns = COLUMNS)
     file_name = "Object_%i_centroid_coordinates.csv" %(i + 1)
-    df.to_csv(file_name, index = False)
+    df.to_csv(os.path.join(path, file_name), index = False)
 
 #save meta data to csv
 meta_df = pd.DataFrame({'frame width': frame.shape[1], 'frame height': frame.shape[0]}, index=[0])
@@ -186,4 +190,4 @@ for i in range(0, n_rois):
     v2_title = 'roi %i v2' %(i + 1)
     roi_df = pd.DataFrame({v1_title: roi_vertices[i][0], v2_title: roi_vertices[i][1]}, index=[0,1])
     meta_df = pd.concat([meta_df, roi_df], axis=1)
-meta_df.to_csv(file_name, index = False)
+meta_df.to_csv(os.path.join(path, 'meta_data.csv'), index = False)
