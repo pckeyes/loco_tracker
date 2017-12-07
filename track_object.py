@@ -47,7 +47,7 @@ if __name__ == '__main__':
     #set up tracker(s)
     #tracking algorithms include: BOOSTING, MIL, KCF, TLD, MEDIANFLOW
     for i in range(0, n_trackers):
-        trackers.append(cv2.Tracker_create("BOOSTING"))
+        trackers.append(cv2.Tracker_create("MIL"))
     
     #read video
     cap = cv2.VideoCapture(video)
@@ -62,7 +62,11 @@ if __name__ == '__main__':
     if not ret:
         print "Frame was not grabbed"
         sys.exit()
-        
+    
+    #get rid of first 20 frames for demo
+    for i in range(0, 20):
+        ret, frame = cap.read()    
+    
     #gamma correct frame
     if use_gamma:
         frame = gamma_correct(frame, gamma)
@@ -72,6 +76,7 @@ if __name__ == '__main__':
     for i in range(0, n_trackers):
         print("Enclose object to be tracked in bounding box then hit Enter")
         bboxes.append(cv2.selectROI(frame, False))
+        #NAME THE TRACKED OBJECT FOR SAVING PURPOSES
         
     #get first centroid(s)
     for i in range(0, n_trackers):    
@@ -147,26 +152,38 @@ if __name__ == '__main__':
 
 #save trace and close video window
 cv2.imwrite("behavior_trace.jpg", trace)
-for i in range(0, n_trackers):
-    file_name = "Object_%i_centroid_coordinates.csv" %(i + 1)
-    dfs[i].to_csv(file_name, index=False)
 cap.release()
 cv2.destroyAllWindows()
 
-#print percentage of time in each ROI
+#print percentage of time in each ROI and write to csv
 for i in range(0, n_trackers):
     total_ROI_time = 0
+    roi_percents = []
     print("Object %i:" %(i + 1))
     for j in range(0, n_rois):
         #get percentages
         roi_percent = decimal.Decimal(roi_counts_per_tracker[i][j])/decimal.Decimal(total_count)
         print("Percent in ROI %i is %.3f" %(j + 1, roi_percent))
         total_ROI_time += roi_percent
+        roi_percents.append(roi_percent)
     print("Percent in no ROI is %.3f" %(1 - total_ROI_time))
+    roi_percents.append(1 - total_ROI_time)
     print("")
+    df = pd.DataFrame(roi_percents, columns = ROI_COLS)
+    file_name = "Object_%i_roi_percents.csv" %(i + 1)
+    df.to_csv(file_name, index = False)
     
 #copy centroids to dataframe and write to csv
-for i in range(0,n_trackers):
+for i in range(0, n_trackers):
     df = pd.DataFrame(all_centroids[i], columns = COLUMNS)
     file_name = "Object_%i_centroid_coordinates.csv" %(i + 1)
-    df.to_csv(file_name, index=False)
+    df.to_csv(file_name, index = False)
+
+#save meta data to csv
+meta_df = pd.DataFrame({'frame width': frame.shape[1], 'frame height': frame.shape[0]}, index=[0])
+for i in range(0, n_rois):
+    v1_title = 'roi %i v1' %(i + 1)
+    v2_title = 'roi %i v2' %(i + 1)
+    roi_df = pd.DataFrame({v1_title: roi_vertices[i][0], v2_title: roi_vertices[i][1]}, index=[0,1])
+    meta_df = pd.concat([meta_df, roi_df], axis=1)
+meta_df.to_csv(file_name, index = False)
